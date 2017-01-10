@@ -1,0 +1,77 @@
+<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+    <string name="app_name">Agrontrol</string>
+    <string name="header_title2">Grabar Captura</string>
+    <string name="header_title3">Reporte Parcial</string>
+    <string name="header_title4">Ingresar Clave</string>
+    <string name="header_title5">Parametros</string>
+    <string name="header_label1">Ingrese datos fijos de Captura</string>
+    <string name="header_label2">Ingrese datos de Recolección</string>
+    <string name="header_label3">Seleccione datos para Reporte</string>
+    <string name="header_label4">Ingrese clave para Ingresar a Opciones</string>
+    <string name="header_label5">Opciones</string>
+    <string name="btn_opciones_label">Opciones</string>
+    <string name="btn_siguiente_label">Siguiente</string>
+    <string name="btn_volver_label">Volver</string>
+    <string name="btn_salir_label">Salir</string>
+    <string name="btn_conectar_label">Conectar</string>
+    <string name="btn_desconectar_label">Desconectar</string>
+    <string name="btn_ir_opcion_label">Ir a Opciones</string>
+    <string name="btn_imprimir_label">Imprimir</string>
+    <string name="btn_reporte_parcial_label">Reporte Parcial</string>
+    <string name="btn_reporte_label">Reporte</string>
+    <string name="btn_scan_label">Escanear</string>
+    <string-array name="unidad_items">
+        <item>2</item>
+        <item>5</item>
+        <item>6</item>
+    </string-array>
+    <string name="btn_print_save_label">Imprime &amp; Graba</string>
+    <string name="btn_save_label">Grabar</string>
+    <string name="btn_del_capture_label">Borrar Capt</string>
+    <string name="btn_test_printer_label">Prueba Impresora</string>
+    <string name="input1_label">Rut o Codigo Recepcionista</string>
+    <string name="input2_label">Rut o Codigo Cosechero</string>
+    <string name="report_start_label">Correlativo Inicial</string>
+    <string name="report_end_label">Correlativo Final</string>
+    <string name="labor_input">Labor</string>
+    <string name="tipo_pesaje_label">Tipo de Pesaje</string>
+    <string name="caja_txt">Caja</string>
+    <string name="kilo_txt">Kilo</string>
+    <string name="unidades_input">Cantidad</string>
+    <string name="tara_input">Tara Caja (Gr)</string>
+    <string name="peso_caja_input">Peso de Cajas (Kg)</string>
+    <string name="peso_neto_txt">Peso Neto (Kg)</string>
+    <string name="id_capt_txt">Id Capturador</string>
+    <string name="correlativo_txt">Correlativo</string>
+    <string name="licencia_input">Licencia Equipo</string>
+    <string name="clave_label">Clave Equipo</string>
+    <string name="options_id_capturador">cl.inspira2.agrontrol.ID_CAPTURADOR</string>
+    <string name="options_correlativo">cl.inspira2.agrontrol.CORRELATIVO</string>
+    <string name="options_licencia">cl.inspira2.agrontrol.LICENCIA</string>
+    <string name="options_printer">cl.inspira2.agrontrol.PRINTER_ADDRS</string>
+    <string name="error_connect_failed">Fallola conexión</string>
+    <string name="error_connect_lost">se perdio la conexión</string>
+
+    <!--  BluetoothChat -->
+    <string name="send">Send</string>
+    <string name="not_connected">You are not connected to a device</string>
+    <string name="bt_not_enabled_leaving">Bluetooth was not enabled. Leaving Bluetooth Chat.</string>
+    <string name="title_connecting">connecting...</string>
+    <string name="title_connected_to">connected to <xliff:g id="device_name">%1$s</xliff:g></string>
+    <string name="title_not_connected">not connected</string>
+
+    <!--  DeviceListActivity -->
+    <string name="scanning">scanning for devices...</string>
+    <string name="select_device">select a device to connect</string>
+    <string name="none_paired">No devices have been paired</string>
+    <string name="none_found">No devices found</string>
+    <string name="title_paired_devices">Paired Devices</string>
+    <string name="title_other_devices">Other Available Devices</string>
+    <string name="button_scan">Scan for devices</string>
+
+    <!-- Options Menu -->
+    <string name="secure_connect">Connect a device - Secure</string>
+    <string name="insecure_connect">Connect a device - Insecure</string>
+    <string name="discoverable">Make discoverable</string>
+
+</resources>
