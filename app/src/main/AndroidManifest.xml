@@ -24,9 +24,7 @@
         <activity android:name=".RecoleccionActivity" />
         <activity android:name=".ClaveActivity" />
         <activity android:name=".OpcionesActivity" />
-        <activity android:name=".ReporteActivity"></activity>
-
-
+        <activity android:name=".ReporteActivity" />
         <activity
             android:name=".DeviceListActivity"
             android:configChanges="orientation|keyboardHidden"

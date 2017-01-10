@@ -1,21 +1,22 @@
 package cl.inspira2.myapplication;
 
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
-
+import android.app.ActionBar;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.os.Bundle;
 import android.os.Handler;
+import android.os.Message;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.text.Editable;
-import android.text.InputType;
 import android.text.TextWatcher;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -23,26 +24,20 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.google.zxing.integration.android.IntentIntegrator;
+import com.google.zxing.integration.android.IntentResult;
+
 import net.londatiga.android.bluebamboo.pockdata.PocketPos;
 import net.londatiga.android.bluebamboo.util.DataConstants;
 import net.londatiga.android.bluebamboo.util.DateUtil;
 import net.londatiga.android.bluebamboo.util.FontDefine;
 import net.londatiga.android.bluebamboo.util.Printer;
-import net.londatiga.android.bluebamboo.util.StringUtil;
 import net.londatiga.android.bluebamboo.util.Util;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
-import java.util.Set;
-import java.util.UUID;
 
 public class RecoleccionActivity extends AppCompatActivity implements View.OnFocusChangeListener, View.OnClickListener {
 
@@ -73,21 +68,30 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
     Cosechero cosechero;
     Caja caja;
 
-    //para la impresion
-    private BluetoothAdapter BA;
-    private Set<BluetoothDevice> pairedDevices;
-    private ArrayList<BluetoothDevice> mDeviceList = new ArrayList<BluetoothDevice>();
-    BluetoothDevice mmDevice;
-    BluetoothSocket mmSocket;
-    // needed for communication to bluetooth device / network
-    OutputStream mmOutputStream;
-    InputStream mmInputStream;
-    Thread workerThread;
+    // Intent request codes
+    private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
+    private static final int REQUEST_CONNECT_DEVICE_INSECURE = 2;
+    private static final int REQUEST_ENABLE_BT = 3;
+    /**
+     * Name of the connected device
+     */
+    private String mConnectedDeviceName = null;
 
-    byte[] readBuffer;
-    int readBufferPosition;
-    volatile boolean stopWorker;
-    String printAddres = "";
+    /**
+     * String buffer for outgoing messages
+     */
+    private StringBuffer mOutStringBuffer;
+
+    /**
+     * Local Bluetooth adapter
+     */
+    private BluetoothAdapter mBluetoothAdapter = null;
+
+    /**
+     * Member object for the print services
+     */
+    private BluetoothPrintService mPrintService = null;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -205,81 +209,211 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
             layoutKilo.setVisibility(View.INVISIBLE);
         }
         if (tipo_caja.contains("PALLET")) {
-            TARA_CAJA.setText(null);
+            TARA_CAJA.setText("0");
         } else {
             TARA_CAJA.setText(caja.getTara().toString());
             TARA_CAJA.setEnabled(false);
         }
-
-        //para la impresion
-        if (sharedPref.contains(getString(R.string.options_correlativo))) {
-            printAddres = sharedPref.getString(getString(R.string.options_printer), "");
+        /**
+         * Aca va lo nuevo para bloutooth como servicio
+         */
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        // If the adapter is null, then Bluetooth is not supported
+        if (mBluetoothAdapter == null) {
+            Toast.makeText(this, "Bluetooth is not available", Toast.LENGTH_LONG).show();
+            //this.finish();
         }
-        if (!printAddres.equals("")) {
-            try {
-                BA = BluetoothAdapter.getDefaultAdapter();
+    }
 
-                if (BA != null) {
-                    if (!BA.isEnabled()) {
-                        Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                        startActivityForResult(enableBluetooth, 100);
-                    }
-                    pairedDevices = BA.getBondedDevices();
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.main, menu);
+        return true;
+    }
 
-                    if (pairedDevices != null && mmSocket == null) {
-                        if (pairedDevices.size() > 0) {
-                            for (BluetoothDevice device : pairedDevices) {
-                                if (device.getAddress().equals(printAddres)) {
-                                    mmDevice = device;
-                                    break;
-                                }
-                            }
-                        }
-                        UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
-                        Method m = mmDevice.getClass().getMethod("createRfcommSocket", new Class[]{int.class});
-                        mmSocket = (BluetoothSocket) m.invoke(mmDevice, 1);
-                        BA.cancelDiscovery();
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.secure_connect_scan: {
+                // Launch the DeviceListActivity to see devices and do scan
+                Intent serverIntent = new Intent(this, DeviceListActivity.class);
+                startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
+                return true;
+            }
+            case R.id.insecure_connect_scan: {
+                // Launch the DeviceListActivity to see devices and do scan
+                Intent serverIntent = new Intent(this, DeviceListActivity.class);
+                startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_INSECURE);
+                return true;
+            }
+            case R.id.discoverable: {
+                // Ensure this device is discoverable by others
+                ensureDiscoverable();
+                return true;
+            }
+            case R.id.test_printer: {
+                testPrint();
+                return true;
+            }
+        }
+        return false;
+    }
 
-                        mmSocket.connect();
-                        mmOutputStream = mmSocket.getOutputStream();
-                        mmInputStream = mmSocket.getInputStream();
-                        beginListenForData();
+    @Override
+    public void onStart() {
+        super.onStart();
+        // If BT is not on, request that it be enabled.
+        // setupPrint() will then be called during onActivityResult
+        if (!mBluetoothAdapter.isEnabled()) {
+            Intent enableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            startActivityForResult(enableIntent, REQUEST_ENABLE_BT);
+            // Otherwise, setup the print session
+        } else if (mPrintService == null) {
+            setupPrint();
+        }
+    }
 
-                        Toast.makeText(this, "Impresora conectada", Toast.LENGTH_SHORT).show();
-                    } else {
-                        if (mmSocket != null) {
-                            mmOutputStream = mmSocket.getOutputStream();
-                            mmInputStream = mmSocket.getInputStream();
-                        } else {
-                            Toast.makeText(getApplicationContext(), "Bluetooth device not found.", Toast.LENGTH_LONG).show();
-                        }
-                    }
-                } else {
-                    Toast.makeText(getApplicationContext(), "No bluetooth adapter available", Toast.LENGTH_LONG).show();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Ocurrio un error al conectar con la impresora", Toast.LENGTH_SHORT).show();
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (mPrintService != null) {
+            mPrintService.stop();
+        }
+    }
 
+    public void onResume() {
+        super.onResume();
+        // Performing this check in onResume() covers the case in which BT was
+        // not enabled during onStart(), so we were paused to enable it...
+        // onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
+        if (mPrintService != null) {
+            // Only if the state is STATE_NONE, do we know that we haven't started already
+            if (mPrintService.getState() == BluetoothPrintService.STATE_NONE) {
+                // Start the Bluetooth print services
+                mPrintService.start();
             }
         }
     }
 
-    public void goReporte(View view) {
-        try {
-            if (mmInputStream != null) {
-                mmInputStream.close();
-            }
-            if (mmOutputStream != null) {
-                mmOutputStream.close();
-            }
-            if (mmSocket != null && mmSocket.isConnected()) {
-                mmSocket.close();
-            }
+    /**
+     * Set up the UI and background operations for print.
+     */
+    private void setupPrint() {
+        //Log.d(TAG, "setupPrint()");
+        // Initialize the BluetoothPrintService to perform bluetooth connections
+        mPrintService = new BluetoothPrintService(this, mHandler);
 
-        } catch (IOException e) {
-            e.printStackTrace();
+        // Initialize the buffer for outgoing messages
+        mOutStringBuffer = new StringBuffer("");
+    }
+
+    /**
+     * Makes this device discoverable.
+     */
+    private void ensureDiscoverable() {
+        if (mBluetoothAdapter.getScanMode() !=
+                BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
+            Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
+            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
+            startActivity(discoverableIntent);
         }
+    }
+
+    /**
+     * Updates the status on the action bar.
+     *
+     * @param resId a string resource ID
+     */
+    private void setStatus(int resId) {
+        final ActionBar actionBar = getActionBar();
+        if (null == actionBar) {
+            return;
+        }
+        actionBar.setSubtitle(resId);
+    }
+
+    /**
+     * Updates the status on the action bar.
+     *
+     * @param subTitle status
+     */
+    private void setStatus(CharSequence subTitle) {
+        final ActionBar actionBar = getActionBar();
+        if (null == actionBar) {
+            return;
+        }
+        actionBar.setSubtitle(subTitle);
+    }
+
+    /**
+     * The Handler that gets information back from the BluetoothPrintService
+     */
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case Constants.MESSAGE_STATE_CHANGE:
+                    switch (msg.arg1) {
+                        case BluetoothPrintService.STATE_CONNECTED:
+                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
+                            break;
+                        case BluetoothPrintService.STATE_CONNECTING:
+                            setStatus(R.string.title_connecting);
+                            break;
+                        case BluetoothPrintService.STATE_LISTEN:
+                        case BluetoothPrintService.STATE_NONE:
+                            setStatus(R.string.title_not_connected);
+                            break;
+                    }
+                    break;
+                case Constants.MESSAGE_WRITE:
+                    byte[] writeBuf = (byte[]) msg.obj;
+                    // construct a string from the buffer
+                    String writeMessage = new String(writeBuf);
+                    //mConversationArrayAdapter.add("Me:  " + writeMessage);
+                    Toast.makeText(getApplicationContext(), "Enviado", Toast.LENGTH_SHORT).show();
+                    break;
+                case Constants.MESSAGE_READ:
+                    byte[] readBuf = (byte[]) msg.obj;
+                    // construct a string from the valid bytes in the buffer
+                    String readMessage = new String(readBuf, 0, msg.arg1);
+                    //mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
+                    Toast.makeText(getApplicationContext(), "Recibido", Toast.LENGTH_SHORT).show();
+                    break;
+                case Constants.MESSAGE_DEVICE_NAME:
+                    // save the connected device's name
+                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
+                    Toast.makeText(getApplicationContext(), "Connected to " + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+                    break;
+                case Constants.MESSAGE_TOAST:
+                    Toast.makeText(getApplicationContext(), msg.getData().getString(Constants.TOAST), Toast.LENGTH_SHORT).show();
+                    break;
+            }
+        }
+    };
+
+
+    public void onStop() {
+        super.onStop();
+    }
+
+    /**
+     * Establish connection with other divice
+     *
+     * @param data   An {@link Intent} with {@link DeviceListActivity#EXTRA_DEVICE_ADDRESS} extra.
+     * @param secure Socket Security type - Secure (true) , Insecure (false)
+     */
+    private void connectDevice(Intent data, boolean secure) {
+        // Get the device MAC address
+        String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+        // Get the BluetoothDevice object
+        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        // Attempt to connect to the device
+        mPrintService.connect(device, secure);
+    }
+
+    public void goReporte(View view) {
         Intent intent = new Intent(this, ReporteActivity.class);
         startActivity(intent);
     }
@@ -348,10 +482,11 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
             SimpleDateFormat df = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
             String formattedDate = df.format(c.getTime());
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+            /*
             if (sharedPref.contains(getString(R.string.options_printer))) {
                 printAddres = sharedPref.getString(getString(R.string.options_printer), "");
             }
-
+            */
             if (sharedPref.contains(getString(R.string.options_id_capturador))) {
                 idCapt = sharedPref.getString(getString(R.string.options_id_capturador), "0");
                 idCapt = String.valueOf(Math.round(Double.parseDouble(idCapt)));
@@ -372,85 +507,87 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
             } catch (Exception e) {
                 Toast.makeText(this, "Error al Guardar:" + e.toString(), Toast.LENGTH_SHORT).show();
             }
-            if (!printAddres.equals("")) {
-                try {
-                    for (int i = 0; i < 2; i++) {
-                        long milis = System.currentTimeMillis();
-                        String date = DateUtil.timeMilisToString(milis, "MMM dd, yyyy");
-                        String time = DateUtil.timeMilisToString(milis, "hh:mm a");
-                        StringBuffer contentBuffer = new StringBuffer(100);
+            try {
+                for (int i = 0; i < 2; i++) {
+                    long milis = System.currentTimeMillis();
+                    String date = DateUtil.timeMilisToString(milis, "MMM dd, yyyy");
+                    String time = DateUtil.timeMilisToString(milis, "hh:mm a");
+                    StringBuffer contentBuffer = new StringBuffer(100);
 
-                        contentBuffer.append("\n\n=============================\n");
-                        contentBuffer.append(Util.nameLeftValueRightJustify(date, time, DataConstants.RECEIPT_WIDTH) + "\n");
-                        //contentBuffer.append(Util.nameLeftValueRightJustify("Correlativo No:", String.valueOf(Math.round(captura.getCorrelativo())), DataConstants.RECEIPT_WIDTH) + "\n");
-                        contentBuffer.append(Util.nameLeftValueRightJustify("Correlativo No:", correlativo_full, DataConstants.RECEIPT_WIDTH) + "\n");
-                        contentBuffer.append("------------------------------\n");
-                        contentBuffer.append(Util.nameLeftValueRightJustify("Recepcionista:", captura.getCod_recepcionista(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        if (recepcionista.getNombre().length() > 30) {
-                            contentBuffer.append(recepcionista.getNombre().substring(0, 30) + "\n");
-                        } else {
-                            contentBuffer.append(recepcionista.getNombre() + "\n");
-                        }
-                        contentBuffer.append(Util.nameLeftValueRightJustify("Cuartel:", captura.getCuartel(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        contentBuffer.append(Util.nameLeftValueRightJustify("Labor:", captura.getLabor(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        contentBuffer.append(Util.nameLeftValueRightJustify("Unidad:", captura.getUnidad(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        contentBuffer.append("------------------------------\n");
-                        contentBuffer.append(Util.nameLeftValueRightJustify("Cosechero:", captura.getCod_cosechero(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        if (cosechero.getNombre().length() > 30) {
-                            contentBuffer.append(cosechero.getNombre().substring(0, 30) + "\n");
-                        } else {
-                            contentBuffer.append(cosechero.getNombre() + "\n");
-                        }
-                        if (!pesaje.equals("kilo")) {
-                            contentBuffer.append(Util.nameLeftValueRightJustify("No Cajas:", captura.getN_cajas().toString(), DataConstants.RECEIPT_WIDTH) + "\n");
-                            contentBuffer.append(Util.nameLeftValueRightJustify("Tipo Caja:", caja.getNombre(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        } else {
-                            contentBuffer.append(Util.nameLeftValueRightJustify("No Cajas:", captura.getN_cajas().toString(), DataConstants.RECEIPT_WIDTH) + "\n");
-                            contentBuffer.append(Util.nameLeftValueRightJustify("Tipo Caja:", caja.getNombre(), DataConstants.RECEIPT_WIDTH) + "\n");
-                            contentBuffer.append(Util.nameLeftValueRightJustify("Peso Neto:", captura.getPeso_cajas().toString(), DataConstants.RECEIPT_WIDTH) + "\n");
-                        }
-                        String receiptContent = contentBuffer.toString();
-
-                        //2D Bar Code
-                        //byte[] formats = {(byte) 0x1d, (byte) 0x6b, (byte) 0x10, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x1f};
-                        //1D Bar Code
-                        byte[] formats = {(byte) 0x1d, (byte) 0x6b, (byte) 0x02, (byte) 0x0d};
-                        //byte[] contents = String.valueOf(Math.round(captura.getCorrelativo())).getBytes();
-                        byte[] contents = correlativo_full.getBytes();
-                        byte[] barcode = new byte[formats.length + contents.length];
-                        System.arraycopy(formats, 0, barcode, 0, formats.length);
-                        System.arraycopy(contents, 0, barcode, formats.length, contents.length);
-
-                        String receiptWeb = "** Agrontrol ** " + "\n" +
-                                "\n" +
-                                "\n";
-
-                        byte[] content = Printer.printfont(receiptContent + "\n", FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN2);
-                        byte[] web = Printer.printfont("\n" + receiptWeb + "\n" +
-                                "\n" +
-                                "\n", FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN2);
-
-                        byte[] totaldata = new byte[content.length + barcode.length + web.length];
-
-                        int offset = 0;
-                        System.arraycopy(content, 0, totaldata, offset, content.length);
-                        offset += content.length;
-
-                        System.arraycopy(barcode, 0, totaldata, offset, barcode.length);
-                        offset += barcode.length;
-
-                        System.arraycopy(web, 0, totaldata, offset, web.length);
-                        byte[] senddata = PocketPos.FramePack(PocketPos.FRAME_TOF_PRINT, totaldata, 0, totaldata.length);
-
-                        mmOutputStream.write(senddata);
+                    contentBuffer.append("\n\n=============================\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify(date, time, DataConstants.RECEIPT_WIDTH) + "\n");
+                    //contentBuffer.append(Util.nameLeftValueRightJustify("Correlativo No:", String.valueOf(Math.round(captura.getCorrelativo())), DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Correlativo No:", correlativo_full, DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append("------------------------------\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Recepcionista:", captura.getCod_recepcionista(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    if (recepcionista.getNombre().length() > 30) {
+                        contentBuffer.append(recepcionista.getNombre().substring(0, 30) + "\n");
+                    } else {
+                        contentBuffer.append(recepcionista.getNombre() + "\n");
                     }
-                    // tell the user data were sent
-                    Toast.makeText(this, "Ticket impreso.", Toast.LENGTH_SHORT).show();
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Cuartel:", captura.getCuartel(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Labor:", captura.getLabor(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Unidad:", captura.getUnidad(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append("------------------------------\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Cosechero:", captura.getCod_cosechero(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    if (cosechero.getNombre().length() > 30) {
+                        contentBuffer.append(cosechero.getNombre().substring(0, 30) + "\n");
+                    } else {
+                        contentBuffer.append(cosechero.getNombre() + "\n");
+                    }
+                    if (!pesaje.equals("kilo")) {
+                        contentBuffer.append(Util.nameLeftValueRightJustify("No Cajas:", captura.getN_cajas().toString(), DataConstants.RECEIPT_WIDTH) + "\n");
+                        contentBuffer.append(Util.nameLeftValueRightJustify("Tipo Caja:", caja.getNombre(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    } else {
+                        contentBuffer.append(Util.nameLeftValueRightJustify("No Cajas:", captura.getN_cajas().toString(), DataConstants.RECEIPT_WIDTH) + "\n");
+                        contentBuffer.append(Util.nameLeftValueRightJustify("Tipo Caja:", caja.getNombre(), DataConstants.RECEIPT_WIDTH) + "\n");
+                        contentBuffer.append(Util.nameLeftValueRightJustify("Peso Neto:", captura.getPeso_cajas().toString(), DataConstants.RECEIPT_WIDTH) + "\n");
+                    }
+                    String receiptContent = contentBuffer.toString();
 
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    Toast.makeText(this, "Ocurrio un error al Imprimir el ticket :" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    //2D Bar Code
+                    //byte[] formats = {(byte) 0x1d, (byte) 0x6b, (byte) 0x10, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x1f};
+                    //1D Bar Code
+                    byte[] formats = {(byte) 0x1d, (byte) 0x6b, (byte) 0x02, (byte) 0x0d};
+                    //byte[] contents = String.valueOf(Math.round(captura.getCorrelativo())).getBytes();
+                    byte[] contents = correlativo_full.getBytes();
+                    byte[] barcode = new byte[formats.length + contents.length];
+                    System.arraycopy(formats, 0, barcode, 0, formats.length);
+                    System.arraycopy(contents, 0, barcode, formats.length, contents.length);
+
+                    String receiptWeb = "** Agrontrol ** " + "\n" +
+                            "\n" +
+                            "\n";
+
+                    byte[] content = Printer.printfont(receiptContent + "\n", FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN2);
+                    byte[] web = Printer.printfont("\n" + receiptWeb + "\n" +
+                            "\n" +
+                            "\n", FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN2);
+
+                    byte[] totaldata = new byte[content.length + barcode.length + web.length];
+
+                    int offset = 0;
+                    System.arraycopy(content, 0, totaldata, offset, content.length);
+                    offset += content.length;
+
+                    System.arraycopy(barcode, 0, totaldata, offset, barcode.length);
+                    offset += barcode.length;
+
+                    System.arraycopy(web, 0, totaldata, offset, web.length);
+                    byte[] senddata = PocketPos.FramePack(PocketPos.FRAME_TOF_PRINT, totaldata, 0, totaldata.length);
+
+                    //mmOutputStream.write(senddata);
+                    // envio los datos
+                    mPrintService.write(senddata);
+                    // Reset out string buffer to zero and clear the edit text field
+                    mOutStringBuffer.setLength(0);
                 }
+                // tell the user data were sent
+                Toast.makeText(this, "Ticket impreso.", Toast.LENGTH_SHORT).show();
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                Toast.makeText(this, "Ocurrio un error al Imprimir el ticket :" + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
             Toast.makeText(this, "Captura guardada", Toast.LENGTH_SHORT).show();
             RUT_COSECHERO.getText().clear();
@@ -518,34 +655,59 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        //Se obtiene el resultado del proceso de scaneo y se parsea
-        IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
-        String scanContent = scanningResult.getContents();
-        if (scanContent != null) {
-            scanContent = scanContent.replaceFirst("^0*", "").toLowerCase();
-            //Desplegamos en pantalla el contenido del código de barra scaneado
-            RUT_COSECHERO.setText(scanContent);
-            DatabaseOperations DOP = new DatabaseOperations(this);
-            Cursor cursor = DOP.getCosecheroByRut(scanContent);
+        switch (requestCode) {
+            case REQUEST_CONNECT_DEVICE_SECURE:
+                // When DeviceListActivity returns with a device to connect
+                if (resultCode == Activity.RESULT_OK) {
+                    connectDevice(intent, true);
+                }
+                break;
+            case REQUEST_CONNECT_DEVICE_INSECURE:
+                // When DeviceListActivity returns with a device to connect
+                if (resultCode == Activity.RESULT_OK) {
+                    connectDevice(intent, false);
+                }
+                break;
+            case REQUEST_ENABLE_BT:
+                // When the request to enable Bluetooth returns
+                if (resultCode == Activity.RESULT_OK) {
+                    // Bluetooth is now enabled, so set up a print session
+                    setupPrint();
+                } else {
+                    // User did not enable Bluetooth or an error occurred
+                    //Log.d(TAG, "BT not enabled");
+                    Toast.makeText(this, R.string.bt_not_enabled_leaving, Toast.LENGTH_SHORT).show();
+                    this.finish();
+                }
+                break;
+            default:
+                IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
+                String scanContent = scanningResult.getContents();
+                if (scanContent != null) {
+                    scanContent = scanContent.replaceFirst("^0*", "").toLowerCase();
+                    //Desplegamos en pantalla el contenido del código de barra scaneado
+                    RUT_COSECHERO.setText(scanContent);
+                    DatabaseOperations DOP = new DatabaseOperations(this);
+                    Cursor cursor = DOP.getCosecheroByRut(scanContent);
 
-            if (cursor != null && cursor.moveToLast()) {
-                cosechero = new Cosechero(cursor);
-                Toast toast = Toast.makeText(this, cosechero.getNombre(), Toast.LENGTH_SHORT);
-                toast.show();
-                validate_rut = true;
-                NOMBRE_COSECHERO.setText(cosechero.getNombre());
+                    if (cursor != null && cursor.moveToLast()) {
+                        cosechero = new Cosechero(cursor);
+                        Toast toast = Toast.makeText(this, cosechero.getNombre(), Toast.LENGTH_SHORT);
+                        toast.show();
+                        validate_rut = true;
+                        NOMBRE_COSECHERO.setText(cosechero.getNombre());
 
-            } else {
-                RUT_COSECHERO.setText(null);
-                NOMBRE_COSECHERO.setText(null);
-                Toast toast = Toast.makeText(this, "Rut No Existe", Toast.LENGTH_SHORT);
-                toast.show();
-            }
-        } else {
-            //Quiere decir que NO se obtuvo resultado
-            Toast.makeText(this, "No se ha recibido datos del scaneo!", Toast.LENGTH_SHORT).show();
+                    } else {
+                        RUT_COSECHERO.setText(null);
+                        NOMBRE_COSECHERO.setText(null);
+                        Toast toast = Toast.makeText(this, "Rut No Existe", Toast.LENGTH_SHORT);
+                        toast.show();
+                    }
+                } else {
+                    //Quiere decir que NO se obtuvo resultado
+                    Toast.makeText(this, "No se ha recibido datos del scaneo!", Toast.LENGTH_SHORT).show();
+                }
         }
-        //onResume();
     }
 
     public void validarPeso(View view) {
@@ -561,73 +723,96 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
     }
 
     /**
-     * after opening a connection to bluetooth printer device,
-     * we have to listen and check if a data were sent to be printed.
+     * this will send text data to be printed by the bluetooth printer
      */
-    void beginListenForData() {
+    private void testPrint() {
         try {
-            final Handler handler = new Handler();
 
-            // this is the ASCII code for a newline character
-            final byte delimiter = 10;
+            DatabaseOperations DOP = new DatabaseOperations(this);
 
-            stopWorker = false;
-            readBufferPosition = 0;
-            readBuffer = new byte[1024];
+            Cursor cosecheros = DOP.getCosecherosLimit(3);
 
-            workerThread = new Thread(new Runnable() {
-                public void run() {
+            if (cosecheros.moveToFirst()) {
+                do {
+                    String receiptHead = "\n"
+                            + "************************"
+                            + "\n"
+                            + "Agrontrol" + "\n"
+                            + "************************"
+                            + "\n";
 
-                    while (!Thread.currentThread().isInterrupted() && !stopWorker) {
+                    long milis = System.currentTimeMillis();
 
-                        try {
+                    String date = DateUtil.timeMilisToString(milis, "MMM dd, yyyy");
+                    String time = DateUtil.timeMilisToString(milis, "hh:mm a");
 
-                            int bytesAvailable = mmInputStream.available();
+                    String rut = cosecheros.getString(cosecheros.getColumnIndex(CosecherosContract.CosecherosEntry.RUT));
+                    String name = cosecheros.getString(cosecheros.getColumnIndex(CosecherosContract.CosecherosEntry.NOMBRE));
+                    String cc = cosecheros.getString(cosecheros.getColumnIndex(CosecherosContract.CosecherosEntry.CENTRO_COSTO));
+                    String cod_c = cosecheros.getString(cosecheros.getColumnIndex(CosecherosContract.CosecherosEntry.COD_TRABAJADOR));
+                    String cod_cz = cosecheros.getString(cosecheros.getColumnIndex(CosecherosContract.CosecherosEntry.COD_CAPATAZ));
 
-                            if (bytesAvailable > 0) {
+                    StringBuffer contentBuffer = new StringBuffer(100);
 
-                                byte[] packetBytes = new byte[bytesAvailable];
-                                mmInputStream.read(packetBytes);
+                    contentBuffer.append(Util.nameLeftValueRightJustify(date, time, DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Nombre:", name, DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Rut:", rut, DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Cod Cosechero", cod_c, DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Centro Costo:", cc, DataConstants.RECEIPT_WIDTH) + "\n");
+                    contentBuffer.append(Util.nameLeftValueRightJustify("Cod Capataz:", cod_cz, DataConstants.RECEIPT_WIDTH) + "\n");
+                    String receiptContent = contentBuffer.toString();
 
-                                for (int i = 0; i < bytesAvailable; i++) {
+                    //2D Bar Code
+                    //byte[] formats = {(byte) 0x1d, (byte) 0x6b, (byte) 0x10, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x00, (byte) 0x1f};
+                    //1D Bar Code
+                    byte[] formats = {(byte) 0x1d, (byte) 0x6b, (byte) 0x02, (byte) 0x0d};
+                    byte[] contents = rut.getBytes();
+                    byte[] barcode = new byte[formats.length + contents.length];
+                    System.arraycopy(formats, 0, barcode, 0, formats.length);
+                    System.arraycopy(contents, 0, barcode, formats.length, contents.length);
 
-                                    byte b = packetBytes[i];
-                                    if (b == delimiter) {
+                    /*********** print Tail*******/
+                    String receiptTail = "\n" + "Test Completed" + "\n"
+                            + "************************" + "\n";
 
-                                        byte[] encodedBytes = new byte[readBufferPosition];
-                                        System.arraycopy(
-                                                readBuffer, 0,
-                                                encodedBytes, 0,
-                                                encodedBytes.length
-                                        );
+                    String receiptWeb = "** www.inspira2.cl ** " + "\n\n\n";
 
-                                        // specify US-ASCII encoding
-                                        final String data = new String(encodedBytes, "US-ASCII");
-                                        readBufferPosition = 0;
+                    byte[] header = Printer.printfont(receiptHead + "\n", FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN1);
+                    byte[] content = Printer.printfont(receiptContent + "\n", FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN1);
+                    byte[] foot = Printer.printfont(receiptTail, FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN1);
+                    byte[] web = Printer.printfont(receiptWeb, FontDefine.FONT_32PX, FontDefine.Align_CENTER, (byte) 0x1A, PocketPos.LANGUAGE_SPAIN1);
 
-                                        // tell the user data were sent to bluetooth printer device
-                                        handler.post(new Runnable() {
-                                            public void run() {
-                                                //myLabel.setText(data);
-                                                Toast.makeText(getApplicationContext(), data, Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
+                    byte[] totaldata = new byte[header.length + content.length + barcode.length + foot.length + web.length];
+                    int offset = 0;
+                    System.arraycopy(header, 0, totaldata, offset, header.length);
+                    offset += header.length;
 
-                                    } else {
-                                        readBuffer[readBufferPosition++] = b;
-                                    }
-                                }
-                            }
+                    System.arraycopy(content, 0, totaldata, offset, content.length);
+                    offset += content.length;
 
-                        } catch (IOException ex) {
-                            stopWorker = true;
-                        }
+                    System.arraycopy(barcode, 0, totaldata, offset, barcode.length);
+                    offset += barcode.length;
 
-                    }
-                }
-            });
+                    System.arraycopy(foot, 0, totaldata, offset, foot.length);
+                    offset += foot.length;
 
-            workerThread.start();
+                    System.arraycopy(web, 0, totaldata, offset, web.length);
+
+                    byte[] senddata = PocketPos.FramePack(PocketPos.FRAME_TOF_PRINT, totaldata, 0, totaldata.length);
+
+                    //mmOutputStream.write(senddata);
+
+                    // envio los datos
+                    mPrintService.write(senddata);
+                    // Reset out string buffer to zero and clear the edit text field
+                    mOutStringBuffer.setLength(0);
+
+                } while (cosecheros.moveToNext());
+            }
+            cosecheros.close();
+
+            // tell the user data were sent
+            Toast.makeText(this, "Prueba Enviada.", Toast.LENGTH_SHORT).show();
 
         } catch (Exception e) {
             e.printStackTrace();
