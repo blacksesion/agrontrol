@@ -13,122 +13,87 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
         <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true"
-        android:layout_height="wrap_content">
-
-        <LinearLayout
-            android:orientation="horizontal"
+            android:orientation="vertical"
             android:layout_width="match_parent"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentLeft="true"
+            android:layout_alignParentStart="true"
             android:layout_height="wrap_content">
-
-            <TextView
-                android:text="@string/report_start_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/textView16"
-                android:layout_weight="1" />
-
-            <EditText
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:ems="10"
-                android:id="@+id/editText_correlativoInicio"
-                android:layout_weight="1"
-                android:hint="@string/report_start_label" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:orientation="horizontal"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content">
-
-            <TextView
-                android:text="@string/report_end_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:id="@+id/textView15"
-                android:layout_weight="1" />
-
-            <EditText
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:inputType="number"
-                android:ems="10"
-                android:id="@+id/editText_correlativoFin"
-                android:layout_weight="1"
-                android:hint="@string/report_end_label" />
-
-        </LinearLayout>
-
-        <Button
-            android:text="@string/btn_reporte_label"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:id="@+id/button"
-            android:onClick="getReporte" />
-
-        <GridView
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" >
-
-
-        </GridView>
-        <TableLayout
-            android:id="@+id/grid"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content" >
-
-            <TableRow
-                android:numColumns="4">
-
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
                 <TextView
-                    android:text="Cuartel"
-                    android:id="@+id/textView19"
-                    android:layout_width="wrap_content" />
-
-                <TextView
-                    android:text="Unidad"
-                    android:id="@+id/textView18"
-                    android:layout_width="wrap_content" />
-
-                <TextView
-                    android:text="N Cajas"
-                    android:id="@+id/textView17"
-                    android:layout_width="wrap_content" />
-
-                <TextView
-                    android:text="Kg Neto"
+                    android:text="@string/report_start_label"
                     android:layout_width="wrap_content"
-                    android:id="@+id/textView20" />
-            </TableRow>
-
-
-        </TableLayout>
-
-    </LinearLayout>
+                    android:layout_height="wrap_content"
+                    android:id="@+id/textView16"
+                    android:layout_weight="1" />
+                <EditText
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:ems="10"
+                    android:id="@+id/editText_correlativoInicio"
+                    android:layout_weight="1"
+                    android:hint="@string/report_start_label" />
+            </LinearLayout>
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:text="@string/report_end_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:id="@+id/textView15"
+                    android:layout_weight="1" />
+                <EditText
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:inputType="number"
+                    android:ems="10"
+                    android:id="@+id/editText_correlativoFin"
+                    android:layout_weight="1"
+                    android:hint="@string/report_end_label" />
+            </LinearLayout>
+            <Button
+                android:text="@string/btn_reporte_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:id="@+id/button"
+                android:onClick="getReporte" />
+            <TableLayout
+                android:id="@+id/grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" >
+                <TableRow
+                    android:numColumns="4">
+                    <TextView
+                        android:text="Cuartel"
+                        android:id="@+id/textView19"
+                        android:layout_width="wrap_content" />
+                    <TextView
+                        android:text="Unidad"
+                        android:id="@+id/textView18"
+                        android:layout_width="wrap_content" />
+                    <TextView
+                        android:text="N Cajas"
+                        android:id="@+id/textView17"
+                        android:layout_width="wrap_content" />
+                    <TextView
+                        android:text="Kg Neto"
+                        android:layout_width="wrap_content"
+                        android:id="@+id/textView20" />
+                </TableRow>
+            </TableLayout>
+            <Button
+                android:text="@string/btn_imprimir_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/button7"
+                android:layout_weight="1"
+                android:onClick="printReport" />
+        </LinearLayout>
     </ScrollView>
-
-    <LinearLayout
-        android:orientation="horizontal"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:gravity="bottom"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentStart="true">
-
-        <Button
-            android:text="@string/btn_imprimir_label"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:id="@+id/button7"
-            android:layout_weight="1"
-            android:onClick="printReport" />
-    </LinearLayout>
-
 </RelativeLayout>
