@@ -336,6 +336,22 @@ public class ReporteActivity extends AppCompatActivity {
                 }
                 GRID_LAYOUT.addView(row);
             } while (reporte.moveToNext());
+            TableRow totalc = new TableRow(this);
+            TextView a = new TextView(this);
+            TextView b = new TextView(this);
+            TableRow totalk = new TableRow(this);
+            TextView c = new TextView(this);
+            TextView d = new TextView(this);
+            a.setText("Total Cajas:");
+            b.setText(totalCajas.toString());
+            c.setText("Total Kilos:");
+            d.setText(totalKilos.toString());
+            totalc.addView(a);
+            totalc.addView(b);
+            totalk.addView(c);
+            totalk.addView(d);
+            GRID_LAYOUT.addView(totalc);
+            GRID_LAYOUT.addView(totalk);
         } else {
             GRID_LAYOUT.removeAllViews();
             TableRow primera = new TableRow(this);
