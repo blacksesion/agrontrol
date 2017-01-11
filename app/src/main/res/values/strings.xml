@@ -1,4 +1,4 @@
-<resources xmlns:xliff="urn:oasis:names:tc:xliff:document:1.2">
+<resources>
     <string name="app_name">Agrontrol</string>
     <string name="header_title2">Grabar Captura</string>
     <string name="header_title3">Reporte Parcial</string>
@@ -49,29 +49,6 @@
     <string name="options_correlativo">cl.inspira2.agrontrol.CORRELATIVO</string>
     <string name="options_licencia">cl.inspira2.agrontrol.LICENCIA</string>
     <string name="options_printer">cl.inspira2.agrontrol.PRINTER_ADDRS</string>
-    <string name="error_connect_failed">Fallo la conexión</string>
+    <string name="error_connect_failed">Fallola conexión</string>
     <string name="error_connect_lost">se perdio la conexión</string>
-
-    <!--  BluetoothChat -->
-    <string name="send">Enviar</string>
-    <string name="not_connected">No esta conectado a una impresora</string>
-    <string name="bt_not_enabled_leaving">Bluetooth no esta habilitado</string>
-    <string name="title_connecting">conectando...</string>
-    <string name="title_connected_to">conectado a <xliff:g id="device_name">%1$s</xliff:g></string>
-    <string name="title_not_connected">no conectado</string>
-
-    <!--  DeviceListActivity -->
-    <string name="scanning">Buscando dispositivos...</string>
-    <string name="select_device">seleccione un dispositivo para conectar</string>
-    <string name="none_paired">Ningun dispositivo pareado</string>
-    <string name="none_found">No se encuentran dispositivos</string>
-    <string name="title_paired_devices">Dispositivos Pareados</string>
-    <string name="title_other_devices">Otros Dispositivos Disponibles</string>
-    <string name="button_scan">Buscar Dispositivos</string>
-
-    <!-- Options Menu -->
-    <string name="secure_connect">Conectar - Seguro</string>
-    <string name="insecure_connect">Conectar - Inseguro</string>
-    <string name="discoverable">Permitir Encontrar</string>
-
 </resources>

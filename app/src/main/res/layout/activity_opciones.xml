@@ -119,7 +119,55 @@
                 android:layout_weight="1" />
         </LinearLayout>
 
-            <LinearLayout
+        <TextView
+            android:text="Seleccione Impresora"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/textView3" />
+
+        <Spinner
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/spinner_selectPrint" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="right">
+
+            <Button
+                android:text="Probar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/button_testPrint"
+                android:onClick="testPrint"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentRight="true"
+                android:layout_alignParentEnd="true" />
+
+            <Button
+                android:text="@string/btn_conectar_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/button_conectPrint"
+                android:onClick="conectPrint"
+                android:layout_alignParentTop="true"
+                android:layout_toLeftOf="@+id/button_testPrint"
+                android:layout_toStartOf="@+id/button_testPrint" />
+
+            <Button
+                android:text="Actualizar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:id="@+id/button8"
+                android:onClick="udpateSelectPrint"
+                android:layout_alignParentTop="true"
+                android:layout_toLeftOf="@+id/button_conectPrint"
+                android:layout_toStartOf="@+id/button_conectPrint" />
+
+        </RelativeLayout>
+
+        <LinearLayout
             android:orientation="horizontal"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
