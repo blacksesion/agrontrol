@@ -2,20 +2,15 @@ package cl.inspira2.myapplication;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothSocket;
-import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.media.MediaScannerConnection;
+import android.os.Bundle;
 import android.os.Environment;
-import android.os.Handler;
 import android.preference.PreferenceManager;
-import android.provider.Settings;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -39,32 +34,15 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.UUID;
 
 public class OpcionesActivity extends AppCompatActivity {
 
 
-    private BluetoothAdapter BA;
-    private Set<BluetoothDevice> pairedDevices;
     private ArrayList<BluetoothDevice> mDeviceList = new ArrayList<BluetoothDevice>();
-    BluetoothDevice mmDevice;
-    BluetoothSocket mmSocket;
-
-    // needed for communication to bluetooth device / network
-    OutputStream mmOutputStream;
-    InputStream mmInputStream;
-    Thread workerThread;
-
-    byte[] readBuffer;
-    int readBufferPosition;
-    volatile boolean stopWorker;
 
     EditText ID_CAPTURADOR_INPUT;
     EditText CORRELATIVO_INPUT;
@@ -72,8 +50,7 @@ public class OpcionesActivity extends AppCompatActivity {
     Spinner SELECT_PRINT;
     Button CONECT_PRINT;
     Button TEST_PRINT;
-
-    private String deviceId;
+    BluetoothPrinterService printer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,7 +67,6 @@ public class OpcionesActivity extends AppCompatActivity {
         TextView deviceId_text = (TextView) findViewById(R.id.device_id_label);
         deviceId_text.setText(licencia.getDeviceId());
 
-        //SharedPreferences sharedPref = this.getPreferences(this.MODE_PRIVATE);
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
 
         if (sharedPref.contains(getString(R.string.options_correlativo))) {
@@ -103,38 +79,6 @@ public class OpcionesActivity extends AppCompatActivity {
             LICENCIA_INPUT.setText(sharedPref.getString(getString(R.string.options_licencia), ""));
         }
 
-        try {
-            BA = BluetoothAdapter.getDefaultAdapter();
-
-            if (BA != null) {
-                if (!BA.isEnabled()) {
-                    Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
-                    startActivityForResult(enableBluetooth, 100);
-                }
-                pairedDevices = BA.getBondedDevices();
-
-                if (pairedDevices != null) {
-                    mDeviceList.addAll(pairedDevices);
-                    updateDeviceList();
-
-                } else {
-                    Toast.makeText(getApplicationContext(), "Bluetooth device not found.", Toast.LENGTH_LONG).show();
-                    SELECT_PRINT.setEnabled(false);
-                    TEST_PRINT.setEnabled(false);
-                    CONECT_PRINT.setEnabled(false);
-                }
-            } else {
-                Toast.makeText(getApplicationContext(), "No bluetooth adapter available", Toast.LENGTH_LONG).show();
-                SELECT_PRINT.setEnabled(false);
-                TEST_PRINT.setEnabled(false);
-                CONECT_PRINT.setEnabled(false);
-            }
-            updateDeviceList();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-
         if (sharedPref.contains(getString(R.string.options_licencia))) {
             if (!licencia.checkLicencia(sharedPref.getString(getString(R.string.options_licencia), ""))) {
                 Toast.makeText(getApplicationContext(), "Falla en la validacion de clave", Toast.LENGTH_LONG).show();
@@ -146,18 +90,19 @@ public class OpcionesActivity extends AppCompatActivity {
             LICENCIA_INPUT.requestFocus();
             LICENCIA_INPUT.selectAll();
         }
+        printer = ((cBaseApplication)this.getApplicationContext()).printer;
     }
 
     public void udpateSelectPrint(View view) {
         try {
-            BA = BluetoothAdapter.getDefaultAdapter();
+            BluetoothAdapter BA = BluetoothAdapter.getDefaultAdapter();
 
             if (BA != null) {
                 if (!BA.isEnabled()) {
                     Intent enableBluetooth = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                     startActivityForResult(enableBluetooth, 1);
                 }
-                pairedDevices = BA.getBondedDevices();
+                Set<BluetoothDevice> pairedDevices = BA.getBondedDevices();
 
                 if (pairedDevices != null) {
                     mDeviceList.addAll(pairedDevices);
@@ -237,46 +182,15 @@ public class OpcionesActivity extends AppCompatActivity {
     }
 
     public void conectPrint(View view) throws IOException {
+        saveSettings(view);
         String selectPrinter = "";
         if (SELECT_PRINT.getSelectedItem() != null) {
             String[] select = SELECT_PRINT.getSelectedItem().toString().split("-");
             selectPrinter = select[1].trim();
         }
-        if (!selectPrinter.equals("")) {
-            // tries to open a connection to the bluetooth printer device
-            try {
-                String[] select = SELECT_PRINT.getSelectedItem().toString().split("-");
 
-
-                if (pairedDevices.size() > 0) {
-                    for (BluetoothDevice device : pairedDevices) {
-
-                        if (device.getAddress().equals(select[1].trim())) {
-                            mmDevice = device;
-                            break;
-                        }
-                    }
-                }
-                UUID uuid = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB"); //Standard SerialPortService ID
-                Method m = mmDevice.getClass().getMethod("createRfcommSocket", new Class[]{int.class});
-                mmSocket = (BluetoothSocket) m.invoke(mmDevice, 1);
-                BA.cancelDiscovery();
-
-                mmSocket.connect();
-                mmOutputStream = mmSocket.getOutputStream();
-                mmInputStream = mmSocket.getInputStream();
-
-                beginListenForData();
-
-                Toast.makeText(this, "Bluetooth Opened", Toast.LENGTH_SHORT).show();
-                //myLabel.setText("Bluetooth Opened");
-
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(this, "Ocurrio un error al conectar con la impresora", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            Toast.makeText(this, "No hay impresora seleccionada", Toast.LENGTH_SHORT).show();
+        if(!printer.conected()){
+            printer.connectDevice(selectPrinter,this);
         }
     }
 
@@ -285,7 +199,7 @@ public class OpcionesActivity extends AppCompatActivity {
      */
     public void testPrint(View view) throws IOException {
 
-        if (mmOutputStream != null) {
+        if (printer.conected()) {
             try {
 
                 DatabaseOperations DOP = new DatabaseOperations(this);
@@ -360,7 +274,7 @@ public class OpcionesActivity extends AppCompatActivity {
 
                         byte[] senddata = PocketPos.FramePack(PocketPos.FRAME_TOF_PRINT, totaldata, 0, totaldata.length);
 
-                        mmOutputStream.write(senddata);
+                        printer.write(senddata);
 
                     } while (cosecheros.moveToNext());
                 }
@@ -373,26 +287,8 @@ public class OpcionesActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         } else {
-            Toast.makeText(this, "No hay impresora seleccionada", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "No hay impresora conectada", Toast.LENGTH_SHORT).show();
         }
-    }
-
-    public void onStop() {
-
-        try {
-            if (mmInputStream != null) {
-                mmInputStream.close();
-            }
-            if (mmOutputStream != null) {
-                mmOutputStream.close();
-            }
-            if (mmSocket != null) {
-                mmSocket.close();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        super.onStop();
     }
 
     public void createExportFile(View view) {
@@ -402,80 +298,6 @@ public class OpcionesActivity extends AppCompatActivity {
             writeToFile(capturas);
         } catch (Exception e) {
             Toast.makeText(getApplicationContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    /**
-     * after opening a connection to bluetooth printer device,
-     * we have to listen and check if a data were sent to be printed.
-     */
-    void beginListenForData() {
-        try {
-            final Handler handler = new Handler();
-
-            // this is the ASCII code for a newline character
-            final byte delimiter = 10;
-
-            stopWorker = false;
-            readBufferPosition = 0;
-            readBuffer = new byte[1024];
-
-            workerThread = new Thread(new Runnable() {
-                public void run() {
-
-                    while (!Thread.currentThread().isInterrupted() && !stopWorker) {
-
-                        try {
-
-                            int bytesAvailable = mmInputStream.available();
-
-                            if (bytesAvailable > 0) {
-
-                                byte[] packetBytes = new byte[bytesAvailable];
-                                mmInputStream.read(packetBytes);
-
-                                for (int i = 0; i < bytesAvailable; i++) {
-
-                                    byte b = packetBytes[i];
-                                    if (b == delimiter) {
-
-                                        byte[] encodedBytes = new byte[readBufferPosition];
-                                        System.arraycopy(
-                                                readBuffer, 0,
-                                                encodedBytes, 0,
-                                                encodedBytes.length
-                                        );
-
-                                        // specify US-ASCII encoding
-                                        final String data = new String(encodedBytes, "US-ASCII");
-                                        readBufferPosition = 0;
-
-                                        // tell the user data were sent to bluetooth printer device
-                                        handler.post(new Runnable() {
-                                            public void run() {
-                                                //myLabel.setText(data);
-                                                Toast.makeText(getApplicationContext(), data, Toast.LENGTH_SHORT).show();
-                                            }
-                                        });
-
-                                    } else {
-                                        readBuffer[readBufferPosition++] = b;
-                                    }
-                                }
-                            }
-
-                        } catch (IOException ex) {
-                            stopWorker = true;
-                        }
-
-                    }
-                }
-            });
-
-            workerThread.start();
-
-        } catch (Exception e) {
-            e.printStackTrace();
         }
     }
 
