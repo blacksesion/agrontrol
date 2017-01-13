@@ -71,7 +71,7 @@
 
     <!-- Options Menu -->
     <string name="secure_connect">Conectar - Seguro</string>
-    <string name="insecure_connect">Conectar - Inseguro</string>
+    <string name="insecure_connect">Conectar</string>
     <string name="discoverable">Permitir Encontrar</string>
 
 </resources>

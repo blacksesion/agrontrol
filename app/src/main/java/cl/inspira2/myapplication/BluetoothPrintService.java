@@ -30,6 +30,8 @@ import android.os.Message;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.UUID;
 
 /**
@@ -264,7 +266,7 @@ public class BluetoothPrintService {
         // Send a failure message back to the Activity
         Message msg = mHandler.obtainMessage(Constants.MESSAGE_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(Constants.TOAST, "Unable to connect device");
+        bundle.putString(Constants.TOAST, "No se puede conectar al dispositivo");
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -279,7 +281,7 @@ public class BluetoothPrintService {
         // Send a failure message back to the Activity
         Message msg = mHandler.obtainMessage(Constants.MESSAGE_TOAST);
         Bundle bundle = new Bundle();
-        bundle.putString(Constants.TOAST, "Device connection was lost");
+        bundle.putString(Constants.TOAST, "Se perdio la conexion con el dispositivo");
         msg.setData(bundle);
         mHandler.sendMessage(msg);
 
@@ -390,14 +392,20 @@ public class BluetoothPrintService {
             // given BluetoothDevice
             try {
                 if (secure) {
-                    tmp = device.createRfcommSocketToServiceRecord(
-                            MY_UUID_SECURE);
+                    tmp = device.createRfcommSocketToServiceRecord(MY_UUID_SECURE);
                 } else {
-                    tmp = device.createInsecureRfcommSocketToServiceRecord(
-                            MY_UUID_INSECURE);
+                    //tmp = device.createInsecureRfcommSocketToServiceRecord(MY_UUID_INSECURE);
+                    Method m = device.getClass().getMethod("createRfcommSocket", new Class[]{int.class});
+                    tmp = (BluetoothSocket) m.invoke(device, 1);
                 }
             } catch (IOException e) {
                 //Log.e(TAG, "Socket Type: " + mSocketType + "create() failed", e);
+            } catch (NoSuchMethodException e) {
+                e.printStackTrace();
+            } catch (IllegalAccessException e) {
+                e.printStackTrace();
+            } catch (InvocationTargetException e) {
+                e.printStackTrace();
             }
             mmSocket = tmp;
         }
