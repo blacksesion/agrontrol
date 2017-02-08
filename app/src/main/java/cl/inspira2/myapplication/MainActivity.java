@@ -58,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements View.OnFocusChang
         setContentView(R.layout.activity_main);
         // primero checo la licencia
         String llave;
+        validate_rut = false;
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         if (sharedPref.contains(getString(R.string.options_licencia))) {
@@ -198,6 +199,7 @@ public class MainActivity extends AppCompatActivity implements View.OnFocusChang
                 validate_rut = true;
                 NOMBRE_RECEPCIONISTA.setText(cosechero.getNombre());
             } else {
+                validate_rut = false;
                 errors.add("Rut no valido \n");
             }
         }

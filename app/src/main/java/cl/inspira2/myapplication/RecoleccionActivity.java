@@ -66,6 +66,7 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
         setContentView(R.layout.activity_recoleccion);
 
         String llave;
+        validate_rut = false;
 
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
         if (sharedPref.contains(getString(R.string.options_licencia))) {
@@ -275,6 +276,7 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
             }
             try {
                 DOP.guardarCaptura(captura);
+                validate_rut = false;
             } catch (Exception e) {
                 Toast.makeText(this, "Error al Guardar:" + e.toString(), Toast.LENGTH_SHORT).show();
             }
@@ -365,6 +367,7 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
             UNIDADES.setText("0");
             NOMBRE_COSECHERO.setText(null);
             LABEL_PESO.setText("0");
+            validate_rut = false;
         } else {
             Toast.makeText(this, errors.toString(), Toast.LENGTH_SHORT).show();
         }
@@ -385,6 +388,7 @@ public class RecoleccionActivity extends AppCompatActivity implements View.OnFoc
                 NOMBRE_COSECHERO.setText(cosechero.getNombre());
 
             } else {
+                validate_rut = false;
                 NOMBRE_COSECHERO.setText(null);
                 Toast.makeText(this, "Rut No Existe", Toast.LENGTH_SHORT).show();
             }
